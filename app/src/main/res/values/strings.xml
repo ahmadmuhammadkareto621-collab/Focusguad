@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">FocusGuard</string>
+    <string name="accessibility_service_description">FocusGuard uses this service to detect when blocked apps are opened and display the lock screen to help you stay focused.</string>
+    <string name="notification_channel_name">FocusGuard Monitoring</string>
+    <string name="notification_channel_desc">Notifications for app limits and screen time warnings.</string>
+</resources>
