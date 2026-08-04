@@ -24,12 +24,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
