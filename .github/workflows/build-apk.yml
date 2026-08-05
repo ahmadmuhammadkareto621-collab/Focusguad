@@ -1,9 +1,9 @@
-name: Build Flutter APK
+name: Build APK
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -18,29 +18,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.22.3'
-          cache: true
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
-      - name: Recreate missing android folder
-        run: |
-          if [ ! -f "android/gradlew" ]; then
-            echo "Android folder missing, recreating..."
-            flutter create . --platforms=android
-          fi
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build APK Debug
-        run: flutter build apk --debug --verbose
+      - name: Build APK
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Focusguad-APK
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
