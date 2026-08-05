@@ -8,39 +8,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept licenses
-        run: yes | sdkmanager --licenses || true
-
-      - name: Setup Gradle 8.7
+      - name: Setup Gradle 9.3.1
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: 8.7
+          gradle-version: 9.3.1
 
-      - name: Fix wrapper and keystore
+      - name: Fix wrapper + keystore
         run: |
           rm -f gradle/wrapper/gradle-wrapper.jar
-          gradle wrapper --gradle-version 8.7
+          gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
+          mkdir -p ~/.android app
           keytool -genkey -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt || true
-          mkdir -p app
-          cp ~/.android/debug.keystore app/debug.keystore || true
-          cp ~/.android/debug.keystore debug.keystore || true
+          cp ~/.android/debug.keystore app/debug.keystore
+          cp ~/.android/debug.keystore debug.keystore
 
       - name: Build APK
-        run: ./gradlew assembleDebug --stacktrace --info
-        continue-on-error: false
+        run: ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Focusguad-APK
