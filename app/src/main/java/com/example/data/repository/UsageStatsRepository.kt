@@ -15,6 +15,7 @@ import com.example.data.db.UsageLogEntity
 import com.example.data.model.AppCategory
 import com.example.data.model.InstalledAppInfo
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -77,6 +78,19 @@ class UsageStatsRepository(
             if (totalTime > 0) {
                 map[usage.packageName] = (map[usage.packageName] ?: 0L) + totalTime
             }
+        }
+
+        val todayStr = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        try {
+            val dbLogs = usageLogDao.getUsageLogsForDate(todayStr).firstOrNull() ?: emptyList()
+            for (log in dbLogs) {
+                val existing = map[log.packageName] ?: 0L
+                if (log.timeInForegroundMs > existing) {
+                    map[log.packageName] = log.timeInForegroundMs
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore DB read failure
         }
 
         return if (map.isEmpty()) {

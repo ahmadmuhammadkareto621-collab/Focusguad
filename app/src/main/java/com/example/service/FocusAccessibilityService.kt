@@ -10,32 +10,35 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class FocusAccessibilityService : AccessibilityService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var lastCheckedPackage: String? = null
+    private var currentForegroundPackage: String? = null
     private var lastCheckTime: Long = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
+
+        // Intercept foreground activity and window state transitions
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            
+
             val packageName = event.packageName?.toString() ?: return
-            
-            // Ignore own package or launcher
+            if (packageName.isBlank()) return
+
+            val now = System.currentTimeMillis()
+            // Throttle rapid identical events for the same package within 500ms
+            if (packageName == currentForegroundPackage && (now - lastCheckTime < 500)) return
+
+            currentForegroundPackage = packageName
+            lastCheckTime = now
+
+            // Skip blocking checks for our own app, launchers, and system UI, but ensure currentForegroundPackage was updated
             if (packageName == applicationContext.packageName ||
                 packageName.contains("launcher") ||
                 packageName.contains("systemui")) return
-
-            val now = System.currentTimeMillis()
-            if (packageName == lastCheckedPackage && (now - lastCheckTime < 1500)) return
-            
-            lastCheckedPackage = packageName
-            lastCheckTime = now
 
             checkAndBlockPackageIfNeeded(packageName)
         }
@@ -46,16 +49,20 @@ class FocusAccessibilityService : AccessibilityService() {
             try {
                 val app = FocusGuardApplication.instance
                 val limitEntity = app.appLimitRepository.getLimitForPackage(packageName) ?: return@launch
-                if (!limitEntity.isEnabled || limitEntity.limitMinutes <= 0) return@launch
+                
+                // Do not block if rule is disabled
+                if (!limitEntity.isEnabled) return@launch
 
                 val now = System.currentTimeMillis()
-                if (limitEntity.tempUnlockUntilMs > now) return@launch // temporarily unlocked
+                // Skip blocking if app is temporarily unlocked via PIN
+                if (limitEntity.tempUnlockUntilMs > now) return@launch
 
                 val todayMap = app.usageStatsRepository.getTodayUsageStatsMap()
                 val usedMs = todayMap[packageName] ?: 0L
                 val usedMins = (usedMs / 60_000L).toInt()
 
-                if (usedMins >= limitEntity.limitMinutes) {
+                // Block if limit is set to 0 (always block) or if accumulated usage meets/exceeds limit
+                if (limitEntity.limitMinutes == 0 || usedMins >= limitEntity.limitMinutes) {
                     launchBlockingOverlay(
                         packageName = packageName,
                         appName = limitEntity.appName,
@@ -102,3 +109,4 @@ class FocusAccessibilityService : AccessibilityService() {
         }
     }
 }
+

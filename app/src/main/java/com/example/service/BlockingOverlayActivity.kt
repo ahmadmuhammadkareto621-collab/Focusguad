@@ -61,29 +61,45 @@ import kotlinx.coroutines.launch
 
 class BlockingOverlayActivity : ComponentActivity() {
 
+    private val blockedPackageState = mutableStateOf("Blocked App")
+    private val appNameState = mutableStateOf("This Application")
+    private val limitMinsState = mutableStateOf(30)
+    private val usedMinsState = mutableStateOf(30)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val blockedPackage = intent.getStringExtra(EXTRA_BLOCKED_PACKAGE) ?: "Blocked App"
-        val appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "This Application"
-        val limitMins = intent.getIntExtra(EXTRA_LIMIT_MINS, 30)
-        val usedMins = intent.getIntExtra(EXTRA_USED_MINS, limitMins)
+        extractIntentExtras(intent)
 
         setContent {
             MyApplicationTheme(darkTheme = true) {
                 BlockingOverlayContent(
-                    appName = appName,
-                    packageName = blockedPackage,
-                    limitMins = limitMins,
-                    usedMins = usedMins,
+                    appName = appNameState.value,
+                    packageName = blockedPackageState.value,
+                    limitMins = limitMinsState.value,
+                    usedMins = usedMinsState.value,
                     onGoHome = { navigateToHome() },
                     onTempUnlockSuccess = { unlockMins ->
-                        tempUnlockApp(blockedPackage, unlockMins)
+                        tempUnlockApp(blockedPackageState.value, unlockMins)
                     }
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        extractIntentExtras(intent)
+    }
+
+    private fun extractIntentExtras(intent: Intent?) {
+        if (intent == null) return
+        blockedPackageState.value = intent.getStringExtra(EXTRA_BLOCKED_PACKAGE) ?: "Blocked App"
+        appNameState.value = intent.getStringExtra(EXTRA_APP_NAME) ?: "This Application"
+        limitMinsState.value = intent.getIntExtra(EXTRA_LIMIT_MINS, 30)
+        usedMinsState.value = intent.getIntExtra(EXTRA_USED_MINS, limitMinsState.value)
     }
 
     private fun navigateToHome() {
