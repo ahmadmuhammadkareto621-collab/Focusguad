@@ -1,3 +1,8 @@
+      - name: Fix corrupt gradle-wrapper.jar
+        run: |
+          rm -f gradle/wrapper/gradle-wrapper.jar
+          curl -sL https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+
 name: Build Android APK
 
 on:
